@@ -14,10 +14,41 @@ def count_tokens(text, model_name):
     return len(encoding.encode(text))
 
 def optimize_prompt(text):
-    # Level 1 Regeln: Höflichkeit & Whitespace entfernen
-    text = re.sub(r"(Hallo|Guten Tag|Bitte|Könntest du|Danke),?", "", text, flags=re.IGNORECASE)
+    # 1. Ganze Höflichkeits-Sätze entfernen (Aggressiv)
+    fluff_phrases = [
+        r"Ich würde mich sehr freuen, wenn du mir (.*) könntest",
+        r"Ich bitte dich, mir das (.*) zu erklären",
+        r"Es ist wichtig zu beachten, dass",
+        r"Selbstverständlich verstehe ich, dass (.*)",
+        r"Vielen Dank", 
+        r"Danke im Voraus",
+        r"in der Lage ist,",
+        r"aufgrund der Tatsache, dass"
+    ]
+    for phrase in fluff_phrases:
+        text = re.sub(phrase, "", text, flags=re.IGNORECASE)
+
+    # 2. Doppelte Informationen/Sätze löschen (Simpel)
+    # Wenn ein Satz exakt so nochmal vorkommt, löschen wir ihn
+    sentences = text.split('.')
+    unique_sentences = []
+    for s in sentences:
+        if s.strip() not in unique_sentences:
+            unique_sentences.append(s.strip())
+    text = ". ".join(unique_sentences)
+
+    # 3. Sprach-Anweisungen bündeln
+    if "Deutsch" in text:
+        text = re.sub(r"(Antworte|Erklärung|Antwort) auf Deutsch(\.)?", "", text, flags=re.IGNORECASE)
+        text += " Antwort-Sprache: Deutsch."
+
+    # 4. Programmier-Kontext kürzen
+    text = text.replace("Programmiersprache Python", "Python")
+
+    # 5. Klassische Level 1 Regeln (Satzzeichen & Whitespace)
+    text = re.sub(r"(Hallo|Bitte|Könntest du|Könnte),?", "", text, flags=re.IGNORECASE)
     text = re.sub(r"\s+", " ", text).strip()
-    text = text.replace(" und ", " & ").replace(" oder ", " | ")
+    
     return text
 
 st.title("✂️ Mein Token-Minimizer")
