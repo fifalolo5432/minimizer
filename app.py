@@ -14,42 +14,37 @@ def count_tokens(text, model_name):
     return len(encoding.encode(text))
 
 def optimize_prompt(text):
-    # 1. Ganze Höflichkeits-Sätze entfernen (Aggressiv)
-    fluff_phrases = [
-        r"Ich würde mich sehr freuen, wenn du mir (.*) könntest",
-        r"Ich bitte dich, mir das (.*) zu erklären",
-        r"Es ist wichtig zu beachten, dass",
-        r"Selbstverständlich verstehe ich, dass (.*)",
-        r"Vielen Dank", 
-        r"Danke im Voraus",
-        r"in der Lage ist,",
-        r"aufgrund der Tatsache, dass"
+    # A. Die "Müll-Liste" (Linguistische Kleinst-Teile)
+    # Diese Wörter können fast immer weg, ohne den Sinn zu rauben
+    fillers = [
+        r"\bbitte\b", r"\bkönntest du\b", r"\bwäre es möglich\b", 
+        r"\beigentlich\b", r"\bvielleicht\b", r"\bmal\b", r"\beinfach\b",
+        r"\bhallo\b", r"\bguten tag\b", r"\bdanke\b", r"\bvielen dank\b"
     ]
-    for phrase in fluff_phrases:
-        text = re.sub(phrase, "", text, flags=re.IGNORECASE)
+    for pattern in fillers:
+        text = re.sub(pattern, "", text, flags=re.IGNORECASE)
 
-    # 2. Doppelte Informationen/Sätze löschen (Simpel)
-    # Wenn ein Satz exakt so nochmal vorkommt, löschen wir ihn
-    sentences = text.split('.')
-    unique_sentences = []
-    for s in sentences:
-        if s.strip() not in unique_sentences:
-            unique_sentences.append(s.strip())
-    text = ". ".join(unique_sentences)
+    # B. Verben-Kürzung (Aktivierung)
+    # Macht aus "Ich möchte, dass du mir erklärst" -> "Erkläre"
+    text = re.sub(r"ich möchte,? dass du mir (.*) erklärst", r"Erkläre \1", text, flags=re.IGNORECASE)
+    text = re.sub(r"kannst du mir (.*) zeigen", r"Zeige \1", text, flags=re.IGNORECASE)
 
-    # 3. Sprach-Anweisungen bündeln
-    if "Deutsch" in text:
-        text = re.sub(r"(Antworte|Erklärung|Antwort) auf Deutsch(\.)?", "", text, flags=re.IGNORECASE)
-        text += " Antwort-Sprache: Deutsch."
+    # C. Smarte Sprach-Erkennung
+    # Sucht nach "auf Deutsch", "in Deutsch", "auf Englisch" etc.
+    lang_match = re.search(r"(auf|in) (Deutsch|Englisch|Französisch|Spanisch)", text, flags=re.IGNORECASE)
+    if lang_match:
+        lang = lang_match.group(2)
+        text = re.sub(r"(auf|in) (Deutsch|Englisch|Französisch|Spanisch)", "", text, flags=re.IGNORECASE)
+        text = text.strip() + f" [Sprache: {lang}]"
 
-    # 4. Programmier-Kontext kürzen
-    text = text.replace("Programmiersprache Python", "Python")
-
-    # 5. Klassische Level 1 Regeln (Satzzeichen & Whitespace)
-    text = re.sub(r"(Hallo|Bitte|Könntest du|Könnte),?", "", text, flags=re.IGNORECASE)
-    text = re.sub(r"\s+", " ", text).strip()
+    # D. Technisches Markup (Struktur statt Prosa)
+    text = text.replace("Programmiersprache ", "")
     
-    return text
+    # E. Whitespace & Satzzeichen-Reinigung
+    text = re.sub(r"\s+", " ", text) # Doppelte Leerzeichen
+    text = re.sub(r"\.+", ".", text) # Doppelte Punkte
+    
+    return text.strip()
 
 st.title("✂️ Mein Token-Minimizer")
 model = st.selectbox("Ziel-Modell wählen:", list(LLM_DATA.keys()))
