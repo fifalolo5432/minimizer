@@ -14,53 +14,53 @@ def count_tokens(text, model_name):
     return len(encoding.encode(text))
 
 def optimize_prompt(text):
-    # 1. Ganze Sätze löschen, die typischerweise "Lärm" sind
-    # (Intro & Outro Block-Löschung)
-    noise_sentences = [
-        r"ich hoffe,? es geht dir (heute )?gut",
-        r"ich würde mich (sehr )?freuen,? wenn",
-        r"ich (bitte|suche|brauche) dich,?",
-        r"für deine bemühungen",
-        r"vielen dank im voraus",
-        r"danke im voraus",
-        r"im voraus &",
-        r"es ist so, dass",
-        r"ich möchte,? dass du mir"
+    # 1. Instruktions-Lärm (Wörter über das 'Wie' der Hilfe)
+    # Diese Verben beschreiben nur den Akt des Antwortens
+    instructional_noise = [
+        r"\b(helfen|hilf|vorgeschlagen|vorschlagen|schreiben|schreib|formulieren|formuliere)\b",
+        r"\b(möglichst|so wie möglich|so gut wie möglich|bitte|gerne)\b",
+        r"\b(zeig|zeige|erklär|erkläre|erläutere)\b"
     ]
-    for pattern in noise_sentences:
+    for pattern in instructional_noise:
         text = re.sub(pattern, "", text, flags=re.IGNORECASE)
 
-    # 2. Aggressiver Wort-Filter (Wortgrenzen sind wichtig!)
-    # Wir löschen Wörter, die fast nie Information tragen
-    kill_list = [
-        r"\b(bitte|vielleicht|eigentlich|gerade|mal|halt|eben|einfach|gerne)\b",
-        r"\b(könntest|würdest|kannst|möchte|hätte|wäre)\b",
-        r"\b(hallo|hi|hey|liebes ki-modell|liebe ki)\b",
-        r"\b(antworte|antwort|erklärung|erkläre mir)\b"
+    # 2. Social & Meta Noise (Ganze Phrasen)
+    meta_noise = [
+        r"ich hoffe es geht dir gut",
+        r"ich würde mich freuen",
+        r"es ist so dass",
+        r"danke für deine bemühungen",
+        r"vielen dank", r"danke im voraus", r"danke"
     ]
-    for pattern in kill_list:
-        text = re.sub(pattern, "", text, flags=re.IGNORECASE)
+    for phrase in meta_noise:
+        text = re.sub(phrase, "", text, flags=re.IGNORECASE)
 
-    # 3. Sprach-Zusammenführung (Smart)
+    # 3. Sprach-Check (Konsolidierung)
     if "deutsch" in text.lower():
         text = re.sub(r"\b(auf|in) deutsch\b", "", text, flags=re.IGNORECASE)
         text = text.strip() + " [Sprache: Deutsch]"
 
-    # 4. Radikaler Struktur-Schnitt (Satzfragmente säubern)
-    # Wir löschen Pronomen, die nach dem Löschen von Verben allein stehen
-    text = re.sub(r"\b(ich|du|dir|mir|mein|meinem|meinen|dich|dein|deine|euer|ihr)\b", "", text, flags=re.IGNORECASE)
-    
-    # 5. Clean-up (Der "Hausmeister")
+    # 4. Radikaler Partikel-Schnitt (Die "Kleber-Wörter")
+    # Wir löschen Pronomen, Artikel und Präpositionen
+    # Diese machen 30% des Token-Verbrauchs aus, ohne Inhalt zu liefern
+    particles = [
+        r"\b(ich|du|dir|mir|mein|meinem|meinen|dich|dein|deine|euer|ihr)\b",
+        r"\b(der|die|das|ein|eine|einen|dem|den|einer|eines)\b",
+        r"\b(an|am|für|zu|in|im|um|da|mit|bei|von|vom)\b"
+    ]
+    for pattern in particles:
+        text = re.sub(pattern, "", text, flags=re.IGNORECASE)
+
+    # 5. Clean-up & Struktur
     text = text.replace(" und ", " & ").replace(" oder ", " | ")
-    # Lösche alle Artikel und Präpositionen, die jetzt oft nutzlos rumstehen
-    text = re.sub(r"\b(der|die|das|ein|eine|einen|dem|den|an|am|für|zu)\b", "", text, flags=re.IGNORECASE)
+    # Satzzeichen-Reinigung (löscht alles außer Buchstaben und Zahlen)
+    text = re.sub(r"[^a-zA-Z0-9\sÄÖÜäöüß&|\[\]:]", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
     
-    # Entferne Satzzeichen-Müll und doppelte Leerzeichen
-    text = re.sub(r"[!,\.;\?]+", " ", text) # Alle Satzzeichen durch Leerzeichen ersetzen
-    text = re.sub(r"\s+", " ", text).strip() # Doppelte Leerzeichen killen
+    # Ergebnis validieren: Wenn am Anfang "&" oder "Dabei" steht, weg damit
+    text = re.sub(r"^(dabei|und|&)\s+", "", text, flags=re.IGNORECASE)
     
-    # Ersten Buchstaben groß schreiben für die Optik
-    return text[0].upper() + text[1:] if text else ""
+    return text.capitalize() if text else ""
 
 st.title("✂️ Mein Token-Minimizer")
 model = st.selectbox("Ziel-Modell wählen:", list(LLM_DATA.keys()))
