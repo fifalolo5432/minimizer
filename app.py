@@ -117,7 +117,7 @@ if user_input:
     cost_old = (t_old / 1_000_000) * price_per_1m
     cost_new = (t_new / 1_000_000) * price_per_1m
     saving_single = cost_old - cost_new
-    saving_1k = saving_single * 1000
+    saving_1k = saving_single * 10000
 
     # Anzeige Metriken (Apple-Style Columns)
     c1, c2, c3 = st.columns(3)
@@ -133,7 +133,7 @@ if user_input:
         <div class="cost-card">
             <h3 style="margin:0; color:#86868b; font-size:14px; text-transform:uppercase;">Deine Ersparnis</h3>
             <h1 style="margin:10px 0; color:#0071e3; font-size:48px;">${saving_1k:.3f}</h1>
-            <p style="color:#1d1d1f; font-weight:500;">Ersparnis pro 1.000 API-Aufrufen</p>
+            <p style="color:#1d1d1f; font-weight:500;">Ersparnis pro 10.000 API-Aufrufen</p>
         </div>
     """, unsafe_allow_html=True)
 
