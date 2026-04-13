@@ -14,53 +14,53 @@ def count_tokens(text, model_name):
     return len(encoding.encode(text))
 
 def optimize_prompt(text):
-    # --- EBENE 1: Universelle Füllfloskeln (Social Noise) ---
-    # Wir suchen nach Mustern, die typisch für "Anfragen" sind
-    social_noise = [
-        r"\b(hallo|hi|hey|guten tag|servus)\b",
-        r"\b(bitte|gerne|vielleicht|mal|einfach|gerade|eigentlich|halt)\b",
-        r"\b(könntest du|würdest du|kannst du|ich möchte|ich brauche|hilf mir|zeige mir)\b",
-        r"\b(vielen dank|danke im voraus|danke|viele grüße|beste grüße)\b",
-        r"\b(ich würde mich freuen, wenn)\b"
+    # 1. Ganze Sätze löschen, die typischerweise "Lärm" sind
+    # (Intro & Outro Block-Löschung)
+    noise_sentences = [
+        r"ich hoffe,? es geht dir (heute )?gut",
+        r"ich würde mich (sehr )?freuen,? wenn",
+        r"ich (bitte|suche|brauche) dich,?",
+        r"für deine bemühungen",
+        r"vielen dank im voraus",
+        r"danke im voraus",
+        r"im voraus &",
+        r"es ist so, dass",
+        r"ich möchte,? dass du mir"
     ]
-    for pattern in social_noise:
+    for pattern in noise_sentences:
         text = re.sub(pattern, "", text, flags=re.IGNORECASE)
 
-    # --- EBENE 2: Erklärungs-Floskeln (Meta-Sprache) ---
-    # Sätze, die nur beschreiben, DASS man etwas erklären soll
-    meta_noise = [
-        r"\b(erkläre mir|erläutere|beschreibe|ganz ausführlich|so einfach wie möglich)\b",
-        r"\b(aufgrund der tatsache dass|es ist wichtig zu beachten dass|in der lage ist)\b",
-        r"\b(programmiersprache|software|anwendung)\b"
+    # 2. Aggressiver Wort-Filter (Wortgrenzen sind wichtig!)
+    # Wir löschen Wörter, die fast nie Information tragen
+    kill_list = [
+        r"\b(bitte|vielleicht|eigentlich|gerade|mal|halt|eben|einfach|gerne)\b",
+        r"\b(könntest|würdest|kannst|möchte|hätte|wäre)\b",
+        r"\b(hallo|hi|hey|liebes ki-modell|liebe ki)\b",
+        r"\b(antworte|antwort|erklärung|erkläre mir)\b"
     ]
-    for pattern in meta_noise:
+    for pattern in kill_list:
         text = re.sub(pattern, "", text, flags=re.IGNORECASE)
 
-    # --- EBENE 3: Smarte Struktur-Korrektur ---
-    # 1. Sprach-Erkennung (Extrahiert "auf Deutsch/Englisch" ans Ende)
-    lang_match = re.search(r"\b(auf|in) (deutsch|englisch|german|english)\b", text, flags=re.IGNORECASE)
-    if lang_match:
-        lang = lang_match.group(2).capitalize()
-        text = re.sub(r"\b(auf|in) (deutsch|englisch|german|english)\b", "", text, flags=re.IGNORECASE)
-        text = text.strip() + f" [Sprache: {lang}]"
+    # 3. Sprach-Zusammenführung (Smart)
+    if "deutsch" in text.lower():
+        text = re.sub(r"\b(auf|in) deutsch\b", "", text, flags=re.IGNORECASE)
+        text = text.strip() + " [Sprache: Deutsch]"
 
-    # 2. Doppelte Sätze löschen (Deduplizierung)
-    sentences = [s.strip() for s in text.split('.') if s.strip()]
-    unique_sentences = []
-    for s in sentences:
-        if s.lower() not in [us.lower() for us in unique_sentences]:
-            unique_sentences.append(s)
-    text = ". ".join(unique_sentences)
-
-    # --- EBENE 4: Clean-up (Kosmetik) ---
-    text = text.replace(" und ", " & ").replace(" oder ", " | ")
-    # Entfernt hängende Artikel/Präpositionen (z.B. "in der ", "für die ")
-    text = re.sub(r"\b(in der|für die|eine|einen|dem|den|die|das|der)\b", "", text, flags=re.IGNORECASE)
-    # Entfernt alle Satzzeichen am Anfang & doppelte Leerzeichen
-    text = re.sub(r"^[!\?\.\s,]+", "", text)
-    text = re.sub(r"\s+", " ", text).strip()
+    # 4. Radikaler Struktur-Schnitt (Satzfragmente säubern)
+    # Wir löschen Pronomen, die nach dem Löschen von Verben allein stehen
+    text = re.sub(r"\b(ich|du|dir|mir|mein|meinem|meinen|dich|dein|deine|euer|ihr)\b", "", text, flags=re.IGNORECASE)
     
-    return text
+    # 5. Clean-up (Der "Hausmeister")
+    text = text.replace(" und ", " & ").replace(" oder ", " | ")
+    # Lösche alle Artikel und Präpositionen, die jetzt oft nutzlos rumstehen
+    text = re.sub(r"\b(der|die|das|ein|eine|einen|dem|den|an|am|für|zu)\b", "", text, flags=re.IGNORECASE)
+    
+    # Entferne Satzzeichen-Müll und doppelte Leerzeichen
+    text = re.sub(r"[!,\.;\?]+", " ", text) # Alle Satzzeichen durch Leerzeichen ersetzen
+    text = re.sub(r"\s+", " ", text).strip() # Doppelte Leerzeichen killen
+    
+    # Ersten Buchstaben groß schreiben für die Optik
+    return text[0].upper() + text[1:] if text else ""
 
 st.title("✂️ Mein Token-Minimizer")
 model = st.selectbox("Ziel-Modell wählen:", list(LLM_DATA.keys()))
