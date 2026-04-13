@@ -4,7 +4,7 @@ import re
 
 # --- CONFIGURATION & DESIGN ---
 st.set_page_config(
-    page_title="Prompt Squeezer | Minimalist Optimizer",
+    page_title="Squeezer. | Minimalist Optimizer",
     page_icon="🤖",
     layout="centered"
 )
@@ -12,30 +12,22 @@ st.set_page_config(
 # Apple-Style CSS Integration
 st.markdown("""
     <style>
-    /* Hintergrund und Schriftart */
     .main {
         background-color: #f5f5f7;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
-    
-    /* Titel-Styling */
     h1 {
         color: #1d1d1f;
         font-weight: 700;
         letter-spacing: -0.05em;
         text-align: center;
-        padding-bottom: 20px;
+        padding-top: 40px;
     }
-
-    /* Container für die Karten */
     .stTextArea textarea {
         border-radius: 12px;
         border: 1px solid #d2d2d7;
-        padding: 15px;
         font-size: 16px;
     }
-
-    /* Button Styling */
     .stButton>button {
         width: 100%;
         border-radius: 20px;
@@ -44,28 +36,19 @@ st.markdown("""
         border: none;
         padding: 10px 20px;
         font-weight: 500;
-        transition: all 0.3s ease;
     }
-    
     .stButton>button:hover {
         background-color: #0077ed;
-        border: none;
         color: white;
-        transform: scale(1.02);
     }
-
-    /* Metriken Styling */
-    [data-testid="stMetricValue"] {
-        font-size: 32px;
-        font-weight: 600;
-        color: #1d1d1f;
-    }
-
-    /* Code-Block Styling */
-    .stCodeBlock {
-        border-radius: 12px;
+    /* Finanz-Karten Styling */
+    .cost-card {
+        background-color: white;
+        padding: 20px;
+        border-radius: 18px;
         border: 1px solid #d2d2d7;
-        background-color: #ffffff !important;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
     }
     </style>
     """, unsafe_allow_html=True)
@@ -83,41 +66,30 @@ def count_tokens(text, model_name):
     return len(encoding.encode(text))
 
 def optimize_prompt(text):
-    # 1. Instruktions-Lärm
-    instructional_noise = [
-        r"\b(helfen|hilf|vorgeschlagen|vorschlagen|schreiben|schreib|formulieren|formuliere)\b",
-        r"\b(möglichst|so wie möglich|so gut wie möglich|bitte|gerne)\b",
-        r"\b(zeig|zeige|erklär|erkläre|erläutere)\b"
+    # 1. Instruktions-Lärm & Höflichkeit
+    noise = [
+        r"\b(helfen|hilf|vorschlagen|schreiben|formuliere|erkläre|erläutere)\b",
+        r"\b(möglichst|so wie möglich|bitte|gerne|vielen dank|danke)\b",
+        r"ich hoffe es geht dir gut", r"ich würde mich freuen", r"es ist so dass"
     ]
-    for pattern in instructional_noise:
+    for pattern in noise:
         text = re.sub(pattern, "", text, flags=re.IGNORECASE)
 
-    # 2. Social & Meta Noise
-    meta_noise = [
-        r"ich hoffe es geht dir gut",
-        r"ich würde mich freuen",
-        r"es ist so dass",
-        r"danke für deine bemühungen",
-        r"vielen dank", r"danke im voraus", r"danke"
-    ]
-    for phrase in meta_noise:
-        text = re.sub(phrase, "", text, flags=re.IGNORECASE)
-
-    # 3. Sprach-Check
+    # 2. Sprach-Check
     if "deutsch" in text.lower():
         text = re.sub(r"\b(auf|in) deutsch\b", "", text, flags=re.IGNORECASE)
         text = text.strip() + " [Sprache: Deutsch]"
 
-    # 4. Radikaler Partikel-Schnitt
+    # 3. Partikel-Schnitt (Grammatik-Füllstoffe)
     particles = [
-        r"\b(ich|du|dir|mir|mein|meinem|meinen|dich|dein|deine|euer|ihr)\b",
-        r"\b(der|die|das|ein|eine|einen|dem|den|einer|eines)\b",
+        r"\b(ich|du|dir|mir|mein|meinem|meinen|dich|dein|deine)\b",
+        r"\b(der|die|das|ein|eine|einen|dem|den)\b",
         r"\b(an|am|für|zu|in|im|um|da|mit|bei|von|vom)\b"
     ]
     for pattern in particles:
         text = re.sub(pattern, "", text, flags=re.IGNORECASE)
 
-    # 5. Clean-up & Struktur
+    # 4. Struktur & Clean-up
     text = text.replace(" und ", " & ").replace(" oder ", " | ")
     text = re.sub(r"[^a-zA-Z0-9\sÄÖÜäöüß&|\[\]:]", " ", text)
     text = re.sub(r"\s+", " ", text).strip()
@@ -128,34 +100,44 @@ def optimize_prompt(text):
 # --- UI LAYOUT ---
 
 st.title("Squeezer.")
-st.markdown("<p style='text-align: center; color: #86868b;'>Weniger Tokens. Gleiche Brillanz.</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #86868b; margin-top: -20px;'>Designte Effizienz für deine Prompts.</p>", unsafe_allow_html=True)
 
-# Modell-Auswahl im Apple-Stil (clean)
-model = st.selectbox("Wähle dein LLM", list(LLM_DATA.keys()))
+model = st.selectbox("Modell wählen", list(LLM_DATA.keys()))
 
-# Input Bereich
 st.markdown("---")
-user_input = st.text_area("Dein Prompt", height=200, placeholder="Füge hier deinen Text ein...")
+user_input = st.text_area("Originaler Prompt", height=180, placeholder="Text einfügen...")
 
 if user_input:
     optimized = optimize_prompt(user_input)
     t_old = count_tokens(user_input, model)
     t_new = count_tokens(optimized, model)
     
-    # Statistiken in eleganten Karten
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric("Original", t_old)
-    with col2:
-        st.metric("Optimiert", t_new, delta=f"-{round(((t_old-t_new)/t_old)*100)}%")
-    with col3:
-        # Ersparnis bei 1000 Aufrufen
-        saving = (t_old - t_new) * (LLM_DATA[model]["price"] / 1_000_000) * 1000
-        st.metric("Ersparnis", f"${saving:.3f}")
+    # Preis-Berechnung
+    price_per_1m = LLM_DATA[model]["price"]
+    cost_old = (t_old / 1_000_000) * price_per_1m
+    cost_new = (t_new / 1_000_000) * price_per_1m
+    saving_single = cost_old - cost_new
+    saving_1k = saving_single * 1000
 
-    # Output Bereich
-    st.markdown("### Optimiertes Ergebnis")
+    # Anzeige Metriken (Apple-Style Columns)
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.metric("Tokens gespart", f"{t_old - t_new}", f"-{round(((t_old-t_new)/t_old)*100)}%")
+    with c2:
+        st.metric("Kosten (Alt)", f"${cost_old:.5f}")
+    with c3:
+        st.metric("Kosten (Neu)", f"${cost_new:.5f}")
+
+    # Fokus auf die Ersparnis
+    st.markdown(f"""
+        <div class="cost-card">
+            <h3 style="margin:0; color:#86868b; font-size:14px; text-transform:uppercase;">Deine Ersparnis</h3>
+            <h1 style="margin:10px 0; color:#0071e3; font-size:48px;">${saving_1k:.3f}</h1>
+            <p style="color:#1d1d1f; font-weight:500;">Ersparnis pro 1.000 API-Aufrufen</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("### Optimierter Prompt")
     st.code(optimized, language=None)
     
-    st.markdown("<p style='font-size: 12px; color: #86868b; text-align: center;'>Optimiert nach Level 1.6 Standards für maximale Effizienz.</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align:center; font-size:12px; color:#86868b;'>Berechnet auf Basis von {model} Marktpreisen (${price_per_1m}/1M Tokens).</p>", unsafe_allow_html=True)
